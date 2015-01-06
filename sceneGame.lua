@@ -1,7 +1,7 @@
 local composer = require( "composer" )
 local scene = composer.newScene()
 local widget = require("widget")
-local buttonLeft, buttonRight, buttonFire
+local buttonLeft, buttonRight, buttonFire, divLine
 local currentImage = 1
 local timerMain
 local sheetFlyingBird
@@ -15,6 +15,7 @@ local spriteFlyingBird2
 local spriteGuyWalk
 local tableAnimals = {}
 local tableStack1 = {}
+local sceneGroupGlobal
 
 
 -----------------------------------------
@@ -63,23 +64,28 @@ end
 
 
 
-
---GAME LISTENERS FUNCTION TO START ALL TIMERS, ETC...
+-------------------------------------------------------
+--       GAME LISTENERS FUNCTION TO START ALL TIMERS, ETC...
+--------------------------------------------------------
 function gameListeners(cmd)
     if (cmd == "start") then
-        timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
+        --timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
+    else
+        timerMain = nil
     end
 end
 
 
 
-
---ADD NEW RANDOM ANIMAL TO STACK
+------------------------------------------------------
+--          ADD NEW RANDOM ANIMAL TO STACK
+-------------------------------------------------------
 function addAnimalToStack()
+    
 
     --get the random number(animal)
     local x = math.random(table.maxn(tableAnimals))
-
+    
     
 
     --INSERT THE RANDOM ANIMAL INTO THE STACKTABLE
@@ -91,24 +97,50 @@ function addAnimalToStack()
 
 
 
-    print("SEQ:"..tableAnimals[x].sequence)
-    print("SCALE:"..tableAnimals[x].xScale)
-
+    --CREATE TEMP COPY OF RANDOMLY SELECTED SPRITE
     local spriteTemp 
     local seq = tableAnimals[x].sequence 
     if (seq == "seqflyingbird") then
         spriteTemp = display.newSprite(sheetFlyingBird, seqflyingbird)
     elseif (seq == "seqflyingbird2") then
-        spriteTemp = display.newSprite(sheetFlyingBird, seqflyingbird2)
+        spriteTemp = display.newSprite(sheetFlyingBird2, seqflyingbird2)
     elseif (seq == "seqguywalk") then
-        spriteTemp = display.newSprite(sheetFlyingBird, seqguywalk)
+        spriteTemp = display.newSprite(sheetGuyWalk, seqguywalk)
     end
     spriteTemp:scale(tableAnimals[x].xScale, tableAnimals[x].yScale)    
     spriteTemp.x = display.contentWidth * .5
-    spriteTemp.y = buttonFire.y - 290
+    spriteTemp.y = 40
+    sceneGroupGlobal:insert(spriteTemp)
     spriteTemp:play()
 
-    
+
+    --SET NEW SPRITE Y POSITION
+    local newSpriteY
+    if (table.maxn(tableStack1) == 0) then
+        --FIRST ANIMAL IN STACK
+        newSpriteY = buttonFire.y - 290        
+    else
+        local lastSprite = tableStack1[table.maxn(tableStack1) ]        
+        local lastSpriteScaleY = lastSprite.yScale
+        local lastSpriteHeight = math.round(lastSprite.height * lastSpriteScaleY)
+        local lastSpriteY = lastSprite.y        
+        local newSpriteScaleY = spriteTemp.yScale
+        local newSpriteHeight = math.round(spriteTemp.height * newSpriteScaleY)
+        newSpriteY = lastSpriteY - (lastSpriteHeight*.5) - (newSpriteHeight*.5)        
+        newSpriteY = newSpriteY + 10
+    end
+
+    spriteTemp.y = newSpriteY
+        
+
+    if (newSpriteY < 0) then
+        endGame()
+    end
+    --ADD THE COPY OF THE SPRITE TO THE REAL STACK
+    table.insert(tableStack1, spriteTemp)
+
+
+
 
 
     displayStack()
@@ -127,27 +159,37 @@ function displayStack()
 end
 
 
+
+
+
+
+
+------------------------------------------------------------
+--         END GAME
+------------------------------------------------------------
+function endGame()
+    gameListeners("end")    
+    composer.gotoScene( "sceneMenu", "slideRight", 800  )
+end
+
+
+
+
+
+
+
+
+
 --SCENE CREATE
 function scene:create( event )
 
-    local sceneGroup = self.view
+    sceneGroupGlobal = self.view
     
     --SET RANDOM SEED
     math.randomseed(os.time())
 
     --LOAD ALL SPRITE STUFF
-    loadSprites(sceneGroup)
-
-  
-
-
---print ("NAME:"..spriteGuyWalk.count)
-
-
- 
-
-
-    --spriteFlyingBird2.isVisible = false
+    loadSprites(sceneGroupGlobal)
 
 
 
@@ -310,6 +352,10 @@ function loadSprites(sceneGroup)
     spriteGuyWalk:play()
 
 
+    --SEPARATING LINE
+    divLine = display.newRect(display.contentWidth*.5, spriteFlyingBird.y - (math.round((spriteFlyingBird.height * spriteFlyingBird.yScale) * .5)) , display.contentWidth, 10)
+    divLine:setFillColor(55,55,55,256)
+    sceneGroup:insert(divLine)
 
 
 
