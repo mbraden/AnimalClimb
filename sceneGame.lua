@@ -187,7 +187,7 @@ function addAnimalToStack()
     sceneGroupGlobal:insert(spriteTemp)
     spriteTemp:play()
 
---MIKE
+--MIKE 2:
 
     --SET NEW SPRITE Y POSITION
     local newSpriteY    
