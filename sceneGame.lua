@@ -1,7 +1,7 @@
 local composer = require( "composer" )
 local scene = composer.newScene()
 local widget = require("widget")
-local buttonLeft, buttonRight, buttonFire, divLine
+local buttonLeft, buttonRight, buttonFire, buttonPause, divLine
 local currentImage = 1
 local timerMain
 local sheetFlyingBird
@@ -16,14 +16,34 @@ local spriteGuyWalk
 local tableAnimals = {}
 local tableStack1 = {}
 local sceneGroupGlobal
+local divLineSpace = 73
+local bPaused = false
+
+
+
+-----------------------------------------
+-------    PAUSE BUTTON PRESSED
+-----------------------------------------
+local function handleButtonPauseEvent( event)
+    if (event.phase == "ended") then
+        if (bPaused == false) then
+            x = timer.pause(timerMain)
+            bPaused = true
+        else
+            x = timer.resume(timerMain)
+            bPaused = false
+        end
+        
+    end
+end
+
 
 
 -----------------------------------------
 -------    LEFT BUTTON PRESSED
 -----------------------------------------
 local function handleButtonLeftEvent( event)
-    if (event.phase == "ended") then
-        print("ButtonLeft was pressed ")
+    if (event.phase == "ended") then        
         tableAnimals[currentImage].isVisible = false
         currentImage = currentImage - 1
         if (currentImage < 1) then
@@ -37,8 +57,7 @@ end
 -------    RIGHT BUTTON PRESSED
 -----------------------------------------
 local function handleButtonRightEvent( event)
-    if (event.phase == "ended") then
-        print("ButtonRight was pressed ")
+    if (event.phase == "ended") then        
         tableAnimals[currentImage].isVisible = false
         currentImage = currentImage + 1
         if (currentImage > table.maxn(tableAnimals)) then
@@ -54,13 +73,68 @@ end
 -----------------------------------------
 local function handleButtonFireEvent( event)
     if (event.phase == "ended") then
-        --print("NUM:"..math.random(6))
 
+        --LOOP THROUGH THE STACK REMOVING ALL THE ONES THAT MATCH WHAT WAS CLICKED       
+        local count
+        for count = table.maxn(tableStack1) , 1, -1 do            --THIS GOES IN REVERSE SO THAT AS THEY ARE REMOVED, THERE ARE ALWAYS MORE BELOW
+            if (tableStack1[count].sequence == tableAnimals[currentImage].sequence) then
+                tableStack1[count]:removeSelf() --THIS REMOVES THE SPRITE
+                table.remove(tableStack1, count)  --THIS REMOVES THE ELEMENT FROM THE TABLE
+            end            
+        end
 
-        --table.remove(tableAnimals, 2)
+        --NOW DROP ALL LEFT DOWN
+        dropRemainingAnimals()
+
 
     end
 end
+
+function dropRemainingAnimals()
+    if (table.maxn(tableStack1) > 0) then
+
+        --LOOP THROUHG LIST FROM BOTTOM(1) TO TOP COLLAPSING THE ANIMALS
+        local count, newSpriteY
+        print(" ")        
+        for count=1, table.maxn(tableStack1), 1 do
+            
+            if (count == 1) then
+                transition.cancel("falling") --THIS CANCELS ANIMALS FALLING FROM TIMER DROP
+                newSpriteY = divLine.y - divLineSpace 
+                print("IDX:"..count..",  MOVING FROM:"..tableStack1[count].y.." TO:"..newSpriteY)
+                transition.to(tableStack1[count], { time=150, y=newSpriteY, transition=easing.inQuad } )
+            else
+                transition.cancel("falling") --THIS CANCELS ANIMALS FALLING FROM TIMER DROP
+                newSpriteY = getUpperYShouldBeBasedOnLowerY(count-1, count,  newSpriteY, tableStack1)
+                print("IDX:"..count..",  MOVING FROM:"..tableStack1[count].y.." TO:"..newSpriteY)
+                transition.to(tableStack1[count], { time=150, y=newSpriteY, transition=easing.inQuad  } )
+                
+            end
+            
+        end
+        print(" ")
+        print(" ")
+        print(" ")
+
+        --x = timer.pause(timerMain)
+
+    end
+end
+
+
+
+
+-------------------------------------------------------------------
+--       CALCULATE WHAT Y VALUE SHOULD BE FOR COLLAPSING ANIMALS
+-------------------------------------------------------------------
+function getUpperYShouldBeBasedOnLowerY(indexLower, indexUpper, lowerYShouldBe, stack)
+    local halfHeightLower, halfHeightUpper, upperY
+    halfHeightLower = math.round((stack[indexLower].height * stack[indexLower].yScale) * .5)
+    halfHeightUpper = math.round((stack[indexUpper].height * stack[indexUpper].yScale) * .5)    
+    upperY = lowerYShouldBe - halfHeightLower - halfHeightUpper
+    return upperY
+end
+
 
 
 
@@ -69,7 +143,7 @@ end
 --------------------------------------------------------
 function gameListeners(cmd)
     if (cmd == "start") then
-        --timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
+        timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
     else
         timerMain = nil
     end
@@ -109,16 +183,17 @@ function addAnimalToStack()
     end
     spriteTemp:scale(tableAnimals[x].xScale, tableAnimals[x].yScale)    
     spriteTemp.x = display.contentWidth * .5
-    spriteTemp.y = 40
+    spriteTemp.y = 0
     sceneGroupGlobal:insert(spriteTemp)
     spriteTemp:play()
 
+--MIKE
 
     --SET NEW SPRITE Y POSITION
-    local newSpriteY
+    local newSpriteY    
     if (table.maxn(tableStack1) == 0) then
         --FIRST ANIMAL IN STACK
-        newSpriteY = buttonFire.y - 290        
+        newSpriteY = divLine.y - divLineSpace
     else
         local lastSprite = tableStack1[table.maxn(tableStack1) ]        
         local lastSpriteScaleY = lastSprite.yScale
@@ -128,38 +203,31 @@ function addAnimalToStack()
         local newSpriteHeight = math.round(spriteTemp.height * newSpriteScaleY)
         newSpriteY = lastSpriteY - (lastSpriteHeight*.5) - (newSpriteHeight*.5)        
         newSpriteY = newSpriteY + 10
+        print("Dropping Animal To "..newSpriteY.." because of last sprite being at "..lastSpriteY)
     end
 
-    spriteTemp.y = newSpriteY
+    
+    --NOW DROP THE SPRITE DOWN ONTO THE STACK
+    transition.to(spriteTemp, { time=500, y=newSpriteY, transition=easing.inQuad, tag="falling" } )
+    
+
         
 
     if (newSpriteY < 0) then
         endGame()
     end
+
     --ADD THE COPY OF THE SPRITE TO THE REAL STACK
     table.insert(tableStack1, spriteTemp)
 
 
-
-
-
-    displayStack()
-
-
-end
-
-
-function displayStack()
-
-    for count = 1, table.maxn(tableStack1), 1 do
-
-
-    end
-
 end
 
 
 
+local listenerTransitionDone = function(obj)
+    print("Transition Complete")
+end
 
 
 
@@ -207,8 +275,16 @@ end
 --------------------------------------
 function loadSprites(sceneGroup)
 
+    --PAUSE BUTTON
+    buttonPause = widget.newButton {
+        id = "buttonpause",
+        x = 40,
+        y = 50,
+        defaultFile = "assets/btnfire.png",
+        onEvent = handleButtonPauseEvent
+    }
 
---LEFT BUTTON
+    --LEFT BUTTON
     buttonLeft = widget.newButton {         
         id = "buttonleft", 
         x = display.contentWidth * .20,
