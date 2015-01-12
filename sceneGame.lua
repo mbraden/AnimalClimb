@@ -18,6 +18,8 @@ local tableStack1 = {}
 local sceneGroupGlobal
 local divLineSpace = 73
 local bPaused = false
+local labelScore
+local score = 0
 
 
 
@@ -69,70 +71,93 @@ end
 
 
 -----------------------------------------
+-------    UPDATE SCORE
+-----------------------------------------
+function updateScore()
+    labelScore.text = score
+end
+
+
+-----------------------------------------
 -------    FIRE BUTTON PRESSED
 -----------------------------------------
 local function handleButtonFireEvent( event)
-    if (event.phase == "ended") then
+    local animalRemoved = false
 
+    if (event.phase == "ended") then
+        --print("Killing")
         --LOOP THROUGH THE STACK REMOVING ALL THE ONES THAT MATCH WHAT WAS CLICKED       
         local count
         for count = table.maxn(tableStack1) , 1, -1 do            --THIS GOES IN REVERSE SO THAT AS THEY ARE REMOVED, THERE ARE ALWAYS MORE BELOW
-            if (tableStack1[count].sequence == tableAnimals[currentImage].sequence) then
-                tableStack1[count]:removeSelf() --THIS REMOVES THE SPRITE
+            if (tableStack1[count].sprite.sequence == tableAnimals[currentImage].sequence) then
+                score = score + tableStack1[count].value
+                tableStack1[count].sprite:removeSelf() --THIS REMOVES THE SPRITE VISUALLY
                 table.remove(tableStack1, count)  --THIS REMOVES THE ELEMENT FROM THE TABLE
+
+                animalRemoved = true
+           
             end            
         end
 
-        --NOW DROP ALL LEFT DOWN
-        dropRemainingAnimals()
+        if (animalRemoved == true)     then
+            --UPDATE SCORE ON SCREEN
+            updateScore()
+
+            --NOW DROP ALL LEFT DOWN
+            dropRemainingAnimals()
+        
+        end
 
 
     end
 end
 
+
+
+-----------------------------------------
+-------    DROP REMAINING ANIMALS
+-----------------------------------------
 function dropRemainingAnimals()
+    
+    timer.pause(timerMain)
+
     if (table.maxn(tableStack1) > 0) then
 
         --LOOP THROUHG LIST FROM BOTTOM(1) TO TOP COLLAPSING THE ANIMALS
         local count, newSpriteY
-        print(" ")        
+        
         for count=1, table.maxn(tableStack1), 1 do
             
-            if (count == 1) then
-                transition.cancel("falling") --THIS CANCELS ANIMALS FALLING FROM TIMER DROP
-                newSpriteY = divLine.y - divLineSpace 
-                print("IDX:"..count..",  MOVING FROM:"..tableStack1[count].y.." TO:"..newSpriteY)
-                transition.to(tableStack1[count], { time=150, y=newSpriteY, transition=easing.inQuad } )
-            else
-                transition.cancel("falling") --THIS CANCELS ANIMALS FALLING FROM TIMER DROP
-                newSpriteY = getUpperYShouldBeBasedOnLowerY(count-1, count,  newSpriteY, tableStack1)
-                print("IDX:"..count..",  MOVING FROM:"..tableStack1[count].y.." TO:"..newSpriteY)
-                transition.to(tableStack1[count], { time=150, y=newSpriteY, transition=easing.inQuad  } )
-                
-            end
-            
+            newSpriteY = getSpriteDestinationY(count,  tableStack1)                        
+            tableStack1[count].destinationY = newSpriteY
+            transition.to(tableStack1[count].sprite, { time=500, y=newSpriteY, transition=easing.linear } )
+                        
         end
-        print(" ")
-        print(" ")
-        print(" ")
-
-        --x = timer.pause(timerMain)
 
     end
+    timer.resume(timerMain)
+    
 end
 
 
 
 
 -------------------------------------------------------------------
---       CALCULATE WHAT Y VALUE SHOULD BE FOR COLLAPSING ANIMALS
+--       GETSPRITEDESTINATIONY
 -------------------------------------------------------------------
-function getUpperYShouldBeBasedOnLowerY(indexLower, indexUpper, lowerYShouldBe, stack)
-    local halfHeightLower, halfHeightUpper, upperY
-    halfHeightLower = math.round((stack[indexLower].height * stack[indexLower].yScale) * .5)
-    halfHeightUpper = math.round((stack[indexUpper].height * stack[indexUpper].yScale) * .5)    
-    upperY = lowerYShouldBe - halfHeightLower - halfHeightUpper
-    return upperY
+function getSpriteDestinationY(indexUpper, stack)
+    local indexLower, halfHeightLower, halfHeightUpper, destY
+
+    if (indexUpper == 1) then
+        destY = divLine.y - divLineSpace 
+    else
+        indexLower = indexUpper - 1
+        halfHeightLower = math.round((stack[indexLower].sprite.height * stack[indexLower].sprite.yScale) * .5)
+        halfHeightUpper = math.round((stack[indexUpper].sprite.height * stack[indexUpper].sprite.yScale) * .5)    
+        destY = stack[indexLower].destinationY - halfHeightLower - halfHeightUpper
+    end
+    
+    return destY
 end
 
 
@@ -151,29 +176,20 @@ end
 
 
 
+
 ------------------------------------------------------
 --          ADD NEW RANDOM ANIMAL TO STACK
 -------------------------------------------------------
 function addAnimalToStack()
-    
+    local newSpriteDestinationY
 
     --get the random number(animal)
     local x = math.random(table.maxn(tableAnimals))
     
-    
 
-    --INSERT THE RANDOM ANIMAL INTO THE STACKTABLE
-    --table.insert(tableStack1, tableAnimals[x] )
-
-
-    --print("DATA:"..tableStack1[table.maxn(tableStack1)].sequence)
-    --print("count elements:"..table.maxn(tableStack1))
-
-
-
-    --CREATE TEMP COPY OF RANDOMLY SELECTED SPRITE
+    --CREATE TEMP COPY OF RANDOMLY SELECTED SPRITE    
     local spriteTemp 
-    local seq = tableAnimals[x].sequence 
+    local seq = tableAnimals[x].sequence
     if (seq == "seqflyingbird") then
         spriteTemp = display.newSprite(sheetFlyingBird, seqflyingbird)
     elseif (seq == "seqflyingbird2") then
@@ -187,47 +203,44 @@ function addAnimalToStack()
     sceneGroupGlobal:insert(spriteTemp)
     spriteTemp:play()
 
---MIKE 2:
+    
+    --BUILD SPRITE NODE & INSERT IT INTO THE STACK TABLE
+    local tableNode = {}
+    tableNode["sprite"] = spriteTemp
+    tableNode["value"] = 100
+    table.insert(tableStack1, tableNode)
+    newSpriteDestinationY = getSpriteDestinationY( table.maxn(tableStack1), tableStack1 )
+    tableStack1[table.maxn(tableStack1)].destinationY = newSpriteDestinationY
+    
 
-    --SET NEW SPRITE Y POSITION
-    local newSpriteY    
-    if (table.maxn(tableStack1) == 0) then
-        --FIRST ANIMAL IN STACK
-        newSpriteY = divLine.y - divLineSpace
-    else
-        local lastSprite = tableStack1[table.maxn(tableStack1) ]        
-        local lastSpriteScaleY = lastSprite.yScale
-        local lastSpriteHeight = math.round(lastSprite.height * lastSpriteScaleY)
-        local lastSpriteY = lastSprite.y        
-        local newSpriteScaleY = spriteTemp.yScale
-        local newSpriteHeight = math.round(spriteTemp.height * newSpriteScaleY)
-        newSpriteY = lastSpriteY - (lastSpriteHeight*.5) - (newSpriteHeight*.5)        
-        newSpriteY = newSpriteY + 10
-        print("Dropping Animal To "..newSpriteY.." because of last sprite being at "..lastSpriteY)
+    
+    --NOW DROP THE SPRITE DOWN ONTO THE STACK USING DESTINATIONY PROPERTY AS TRANSITION TO VALUE    
+    local dif = math.abs((tableStack1[table.maxn(tableStack1)].destinationY) - (tableStack1[table.maxn(tableStack1)].sprite.y))
+    local dropTime    
+    print("Dif="..dif)
+    if (dif < 200 ) then
+        dropTime = 275
+    elseif (dif >=200) and (dif < 500) then
+        dropTime = 350
+    elseif (dif >= 500) then
+        dropTime = 500
     end
 
-    
-    --NOW DROP THE SPRITE DOWN ONTO THE STACK
-    transition.to(spriteTemp, { time=500, y=newSpriteY, transition=easing.inQuad, tag="falling" } )
-    
+    transition.to(tableStack1[table.maxn(tableStack1)].sprite, { time=dropTime, y=tableStack1[table.maxn(tableStack1)].destinationY , transition=easing.linear } )
 
-        
 
-    if (newSpriteY < 0) then
+    --STACK HAS REACHED THE TOP WHEN DESTINATION IS < 0 (ABOVE TOP OF SCREEN)
+    if (tableStack1[table.maxn(tableStack1)].destinationY < 0) then
         endGame()
     end
 
-    --ADD THE COPY OF THE SPRITE TO THE REAL STACK
-    table.insert(tableStack1, spriteTemp)
 
 
 end
 
 
 
-local listenerTransitionDone = function(obj)
-    print("Transition Complete")
-end
+
 
 
 
@@ -275,14 +288,9 @@ end
 --------------------------------------
 function loadSprites(sceneGroup)
 
-    --PAUSE BUTTON
-    buttonPause = widget.newButton {
-        id = "buttonpause",
-        x = 40,
-        y = 50,
-        defaultFile = "assets/btnfire.png",
-        onEvent = handleButtonPauseEvent
-    }
+    labelScore = display.newText("0000",70,300, native.systemFont, 46)
+
+    
 
     --LEFT BUTTON
     buttonLeft = widget.newButton {         
@@ -324,30 +332,30 @@ function loadSprites(sceneGroup)
     --IMAGE SHEET OF FLYING BIRD 1
     local optionsFlyingBird = 
     {
-        width = 240,
-        height = 314,
-        numFrames = 22
+        width = 125,
+        height = 125,
+        numFrames = 16
     }
-    sheetFlyingBird = graphics.newImageSheet("assets/birdsheet1.png", optionsFlyingBird)
+    sheetFlyingBird = graphics.newImageSheet("assets/ss1.png", optionsFlyingBird)
 
 
     --IMAGE SHEET OF FLYING BIRD 2
     local optionsFlyingBird2 = 
     {
-        width = 110,
-        height = 101,
-        numFrames = 14
+        width = 125,
+        height = 125,
+        numFrames = 16
     }
-    sheetFlyingBird2 = graphics.newImageSheet("assets/birdsheet2.png", optionsFlyingBird2)
+    sheetFlyingBird2 = graphics.newImageSheet("assets/ss2.png", optionsFlyingBird2)
     
     --IMAGE SHEET OF GUYWALK
     local optionsGuyWalk = 
     {
-        width = 58,
-        height = 87,
-        numFrames = 8
+        width = 125,
+        height = 125,
+        numFrames = 16
     }
-    sheetGuyWalk = graphics.newImageSheet("assets/guywalksheet.png", optionsGuyWalk)
+    sheetGuyWalk = graphics.newImageSheet("assets/ss3.png", optionsGuyWalk)
 
 
 
@@ -360,7 +368,7 @@ function loadSprites(sceneGroup)
         {
             name = "seqflyingbird",
             start = 1,
-            count = 22,
+            count = 16,
             time = 650,
             loopCount = 0,
             loopDirection = "forward"
@@ -374,7 +382,7 @@ function loadSprites(sceneGroup)
         {
             name = "seqflyingbird2",
             start = 1,
-            count = 14,
+            count = 16,
             time = 650,
             loopCount = 0,
             loopDirection = "forward"
@@ -387,7 +395,7 @@ function loadSprites(sceneGroup)
         {
             name = "seqguywalk",
             start = 1,
-            count = 8,
+            count = 16,
             time = 650,
             loopCount = 0,
             loopDirection = "forward"
@@ -409,7 +417,7 @@ function loadSprites(sceneGroup)
 
     --SPRITE FOR FLYING BIRD 2
     spriteFlyingBird2 = display.newSprite(sheetFlyingBird2, seqflyingbird2)    
-    spriteFlyingBird2:scale(1, 1)
+    spriteFlyingBird2:scale(.5, .5)
     sceneGroup:insert(spriteFlyingBird2)
     spriteFlyingBird2.x = display.contentWidth * .5
     spriteFlyingBird2.y = buttonFire.y - 190
@@ -419,7 +427,7 @@ function loadSprites(sceneGroup)
 
     --SPRITE FOR GUY WALK
     spriteGuyWalk = display.newSprite(sheetGuyWalk, seqguywalk)    
-    spriteGuyWalk:scale(.75, .75)
+    spriteGuyWalk:scale(.5, .5)
     sceneGroup:insert(spriteGuyWalk)
     spriteGuyWalk.x = display.contentWidth * .5
     spriteGuyWalk.y = buttonFire.y - 190
