@@ -180,10 +180,10 @@ function gameListeners(cmd)
     else
         timer.stop(timerMain)
 
-        
+
         timerMain = nil
 
-
+print ("HI")
 
     end
 end
