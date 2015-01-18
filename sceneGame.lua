@@ -21,7 +21,15 @@ local bPaused = false
 local labelScore
 local score = 0
 
+local function checkMemory()
+   collectgarbage( "collect" )
+   local memUsage_str = string.format( "MEMORY = %.3f KB", collectgarbage( "count" ) )
+   print( memUsage_str, "TEXTURE = "..(system.getInfo("textureMemoryUsed") / (1024 * 1024) ) )
+end
 
+
+
+--timer.performWithDelay( 1000, checkMemory, 0 )
 
 -----------------------------------------
 -------    PAUSE BUTTON PRESSED
@@ -170,7 +178,9 @@ function gameListeners(cmd)
     if (cmd == "start") then
         timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
     else
+        timer.stop(timerMain)
         timerMain = nil
+
     end
 end
 
@@ -217,7 +227,7 @@ function addAnimalToStack()
     --NOW DROP THE SPRITE DOWN ONTO THE STACK USING DESTINATIONY PROPERTY AS TRANSITION TO VALUE    
     local dif = math.abs((tableStack1[table.maxn(tableStack1)].destinationY) - (tableStack1[table.maxn(tableStack1)].sprite.y))
     local dropTime    
-    print("Dif="..dif)
+    
     if (dif < 200 ) then
         dropTime = 275
     elseif (dif >=200) and (dif < 500) then
@@ -263,6 +273,11 @@ end
 
 --SCENE CREATE
 function scene:create( event )
+
+
+print("INSIDE SCENE:CREATE")
+
+
 
     sceneGroupGlobal = self.view
     
@@ -458,8 +473,10 @@ function scene:show( event )
 
     if ( phase == "will" ) then
         -- Called when the scene is still off screen (but is about to come on screen).
+        print("ABOUT TO SHOW SCENE")
     elseif ( phase == "did" ) then
-        composer.removeScene( "sceneMenu" )
+        composer.removeScene( "sceneMenu", true )
+        print("scene:show:DID")
         -- Called when the scene is now on screen.
         -- Insert code here to make the scene come alive.
         -- Example: start timers, begin animation, play audio, etc.
@@ -477,8 +494,14 @@ function scene:hide( event )
         -- Called when the scene is on screen (but is about to go off screen).
         -- Insert code here to "pause" the scene.
         -- Example: stop timers, stop animation, stop audio, etc.
+        print("INSIDE SCENE:HIDE.WILL")
     elseif ( phase == "did" ) then
         -- Called immediately after scene goes off screen.
+        print("INSIDE SCENE:HIDE.DID")
+
+
+        composer.removeScene( "sceneGame", true)
+
     end
 end
 
@@ -491,6 +514,8 @@ function scene:destroy( event )
     -- Called prior to the removal of scene's view ("sceneGroup").
     -- Insert code here to clean up the scene.
     -- Example: remove display objects, save state, etc.
+
+print("INSIDE SCENE:DESTROY")
 end
 
 
