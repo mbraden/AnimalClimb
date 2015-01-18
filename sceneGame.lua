@@ -179,10 +179,16 @@ function gameListeners(cmd)
         timerMain = timer.performWithDelay(2000, addAnimalToStack, 0 )
     else
         timer.stop(timerMain)
+
+        
         timerMain = nil
+
+
 
     end
 end
+
+
 
 
 
