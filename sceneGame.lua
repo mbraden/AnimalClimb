@@ -183,7 +183,7 @@ function gameListeners(cmd)
 
         timerMain = nil
 
-print ("HI")
+print ("HI FOOL")
 
     end
 end
