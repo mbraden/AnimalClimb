@@ -7,7 +7,7 @@ local function onSceneTouch( self, event )
     
     if event.phase == "began" then
         
-        composer.gotoScene( "sceneGame", "slideLeft", 800  )
+        composer.gotoScene( "sceneMenu", "slideLeft", 800  )
         
         return true
     end
@@ -18,13 +18,14 @@ end
 
 -- "scene:create()"
 function scene:create( event )
+
     local sceneGroup = self.view
 
     -- Initialize the scene here.
     -- Example: add display objects to "sceneGroup", add touch listeners, etc.
 
     --BACKGROUND IMAGE
-    bgimage = display.newImageRect( "assets/splashscreen.png", 320, 570 )
+    bgimage = display.newImage( "assets/crate.png" )
     bgimage.x = display.contentCenterX
     bgimage.y = display.contentCenterY    
     sceneGroup:insert(bgimage)
